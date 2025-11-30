@@ -5,9 +5,9 @@
 #include <omp.h>
 #include "mede_time.h"
 
-#define SIZE 100 
+#define SIZE 100
 #define NOME_ARQ_SIZE   50
-#define TRUE 1 
+#define TRUE 1
 #define FALSE 0
 
 int main(int argc, char *argv[])
@@ -17,15 +17,12 @@ int main(int argc, char *argv[])
     char arq1[NOME_ARQ_SIZE];
     char arq2[NOME_ARQ_SIZE];
     int ocorrencias;
-    int i_seq;
     FILE *f1;
     FILE *f2;
     int arq2_size;
     int size_sequencia_busca;
-    int size_seq; 
 
     TIMER_CLEAR;
-//    TIMER_START;
 
     // Abrir o arquivo e pegar a palavra
     if (argc == 3){
@@ -65,50 +62,49 @@ int main(int argc, char *argv[])
     fgets(sequencia_busca,SIZE,f1);
     size_sequencia_busca=strlen(sequencia_busca);
     printf("tamanho da sequencia buscada = %d\n",size_sequencia_busca);
-    ocorrencias=0;
-    i_seq=0;
-    
-    #pragma omp parallel reduction(+:ocorrencias)
-    {
-        #pragma omp single
-        {
-            while(i_seq < arq2_size){
-                // Leitura de uma linha
-                fgets(buff, SIZE, f2);
-                // Comparacao da sequencia na linha em arq2 com a seq buscada
-                size_seq=strlen(buff);
-                i_seq+=size_seq;
 
-                char *linha = strdup(buff);
+    // Pre-alocacao de memoria para armazenar linhas
+    int max_lines = arq2_size / 10 + 1000;  // estimativa do numero de linhas
+    char **lines = (char **)malloc(max_lines * sizeof(char *));
+    int *line_sizes = (int *)malloc(max_lines * sizeof(int));
+    int num_lines = 0;
 
-                #pragma omp task shared(ocorrencias)
-                {
-                    int achou, j, i;
-                    if (size_sequencia_busca <= size_seq){
-                        i=0; 
-                        while (i<=(size_seq-size_sequencia_busca)) {   //busca da sequencia em uma linha 
-                            achou=TRUE;
-                            for(j = 0; j < (size_sequencia_busca-1); j++){
-                                if(sequencia_busca[j] != linha[i+j]){
-                                    i++;
-                                    achou = FALSE;
-                                    break;
-                                }
-                            }
-                            if (achou == TRUE){
-                                ocorrencias++;
-                                i+=size_sequencia_busca-1;
-                            }
-                        }
+    // Leitura de todas as linhas do arquivo 2
+    while(fgets(buff, SIZE, f2) != NULL && num_lines < max_lines){
+        int size_seq = strlen(buff);
+        lines[num_lines] = (char *)malloc((size_seq + 1) * sizeof(char));
+        strcpy(lines[num_lines], buff);
+        line_sizes[num_lines] = size_seq;
+        num_lines++;
+    }
+
+    ocorrencias = 0;
+
+    // Paralelizacao da busca usando schedule dynamic para balanceamento
+    #pragma omp parallel for reduction(+:ocorrencias) schedule(dynamic, 10)
+    for(int idx = 0; idx < num_lines; idx++){
+        char *linha = lines[idx];
+        int size_seq = line_sizes[idx];
+        int achou, j, i;
+
+        if (size_sequencia_busca <= size_seq){
+            i = 0;
+            while (i <= (size_seq - size_sequencia_busca)) {   //busca da sequencia em uma linha
+                achou = TRUE;
+                for(j = 0; j < (size_sequencia_busca - 1); j++){
+                    if(sequencia_busca[j] != linha[i + j]){
+                        i++;
+                        achou = FALSE;
+                        break;
                     }
                 }
-                #pragma omp taskwait
+                if (achou == TRUE){
+                    ocorrencias++;
+                    i += size_sequencia_busca - 1;
+                }
             }
         }
     }
-    // Fecha os arquivos
-    fclose(f1);
-    fclose(f2);
 
     TIMER_STOP;
     printf("Tempo: %f \n", TIMER_ELAPSED);
@@ -116,5 +112,5 @@ int main(int argc, char *argv[])
     printf("Total de ocorrencias = %d\n",ocorrencias);
     printf("=======================================\n");
     return 0;
-    
+
 }
