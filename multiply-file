@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Check if correct number of arguments provided
+if [ "$#" -ne 3 ]; then
+    echo "Usage: $0 <source_file> <destination_file> <count>"
+    exit 1
+fi
+
+SOURCE_FILE="$1"
+DEST_FILE="$2"
+COUNT="$3"
+
+# Check if source file exists
+if [ ! -f "$SOURCE_FILE" ]; then
+    echo "Error: Source file '$SOURCE_FILE' not found"
+    exit 1
+fi
+
+# Check if count is a positive integer
+if ! [[ "$COUNT" =~ ^[0-9]+$ ]] || [ "$COUNT" -lt 1 ]; then
+    echo "Error: Count must be a positive integer"
+    exit 1
+fi
+
+# Clear the destination file
+> "$DEST_FILE"
+
+# Multiply the file contents
+for ((i=1; i<=COUNT; i++)); do
+    cat "$SOURCE_FILE" >> "$DEST_FILE"
+done
+
+echo "Successfully wrote contents of '$SOURCE_FILE' $COUNT times to '$DEST_FILE'"
