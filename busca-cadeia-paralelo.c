@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
     ocorrencias = 0;
 
     // Paralelizacao da busca usando schedule dynamic para balanceamento
-    #pragma omp parallel for reduction(+:ocorrencias) schedule(dynamic, 10)
+    #pragma omp parallel for reduction(+:ocorrencias) schedule(dynamic, 1000)
     for(int idx = 0; idx < num_lines; idx++){
         char *linha = lines[idx];
         int size_seq = line_sizes[idx];
